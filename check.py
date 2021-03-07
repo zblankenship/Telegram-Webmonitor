@@ -6,12 +6,15 @@ import pymongo
 from urllib.request import urlopen, Request 
 from dotenv import load_dotenv
 from datetime import timedelta, datetime
+import datetime
+import urllib
 
 load_dotenv('key.env')
 mongo = os.getenv('mongo')
 myclient = pymongo.MongoClient(mongo)
 mydb = myclient["webmonitor"]
 headcol = mydb["websites"]
+headers = {'User-Agent': 'Mozilla/5.0 (Windows NT 6.1) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/41.0.2228.0 Safari/537.3'}
 
 def GetWebsite(link):
     url = Request(link, 
@@ -26,8 +29,9 @@ def GenerateHash(data):
     currentHash = hashlib.sha224(response).hexdigest() 
     return currentHash
 
-def SleepTime(length):
-    time.sleep(length)
+def SleepTime(start_time):
+    time_taken = time.process_time() - start
+    return time_taken
 
 def ChangeNotification(link):
     print(link, 'changed')
@@ -38,17 +42,18 @@ def updatetime(url):
     date_time = date + time
     myquery = { "url": url }
     newvalues = { "$set": { "time_last_checked": date_time } }
-    mycol.update_one(myquery, newvalues)
+    headcol.update_one(myquery, newvalues)
 
 def updatehash(url,hash):
     time = timefunc()
     date = datefunc()
-    date_time = date + time
+    date_time = date + " " + time
     myquery = { "url": url }
     newvalues = { "$set": { 
             "hash": hash,
-            "last_change_time": date_time } }
-    mycol.update_one(myquery, newvalues)
+            "last_change_time": date_time,
+            "time_last_checked": date_time} }
+    headcol.update_one(myquery, newvalues)
 
 
 def timefunc():
@@ -62,20 +67,28 @@ def datefunc():
     return date
 
 
-while True:
+#while True:
+#    try:
+headdoc = headcol.find()
+start = time.process_time()
+for x in headdoc:
+    print('loop')
+    req = Request(url=x['url'], headers=headers)
     try:
-        headdoc = headcol.find()
-        for x in headdoc:
-            print('loop')
-            response = urlopen(x['url']).read()
-            newHash = GenerateHash(response)
-            if newHash == x['hash']: 
-                updatetime(x['url'])
-            else: 
-                ChangeNotification(url)
-                updatehash(x['url'],x['hash'])
-    except Exception as e: 
-    	print("error") 
+        response = urlopen(req).read()
+    except urllib.error.HTTPError as e:
+        if e.code in (..., 403, ...):
+            continue
+    newHash = GenerateHash(response)
+    if newHash == x['hash']: 
+        updatetime(x['url'])
+    else: 
+        ChangeNotification(x['url'])
+        updatehash(x['url'],newHash)
+time_taken = SleepTime(start)
+print(time_taken)
+#    except Exception as e: 
+#    	print("error") 
 
 
 
