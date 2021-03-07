@@ -8,6 +8,7 @@ from dotenv import load_dotenv
 from datetime import timedelta, datetime
 import datetime
 import urllib
+import math
 
 load_dotenv('key.env')
 mongo = os.getenv('mongo')
@@ -31,6 +32,8 @@ def GenerateHash(data):
 
 def SleepTime(start_time):
     time_taken = time.process_time() - start
+    time_taken = math.ceil(time_taken)
+    time.sleep(300-time_taken)
     return time_taken
 
 def ChangeNotification(link):
@@ -67,28 +70,27 @@ def datefunc():
     return date
 
 
-#while True:
-#    try:
-headdoc = headcol.find()
-start = time.process_time()
-for x in headdoc:
-    print('loop')
-    req = Request(url=x['url'], headers=headers)
+while True:
+    print("loop")
     try:
-        response = urlopen(req).read()
-    except urllib.error.HTTPError as e:
-        if e.code in (..., 403, ...):
-            continue
-    newHash = GenerateHash(response)
-    if newHash == x['hash']: 
-        updatetime(x['url'])
-    else: 
-        ChangeNotification(x['url'])
-        updatehash(x['url'],newHash)
-time_taken = SleepTime(start)
-print(time_taken)
-#    except Exception as e: 
-#    	print("error") 
+        headdoc = headcol.find()
+        start = time.process_time()
+        for x in headdoc:
+            req = Request(url=x['url'], headers=headers)
+            try:
+                response = urlopen(req).read()
+            except urllib.error.HTTPError as e:
+                if e.code in (..., 403, ...):
+                    continue
+            newHash = GenerateHash(response)
+            if newHash == x['hash']: 
+                updatetime(x['url'])
+            else: 
+                ChangeNotification(x['url'])
+                updatehash(x['url'],newHash)
+        time_taken = SleepTime(start)
+    except Exception as e: 
+    	print("error") 
 
 
 
