@@ -51,7 +51,8 @@ def add_to_head_collection(url):
     date = date.strftime("%x")
     time = datetime.datetime.now()
     time = time.strftime("%X")
-    head_dict = { "url": url, "time": "", "date_added": date, "time_added": time, "time_last_checked": datetime.datetime.now()}
+    date_time = date + time
+    head_dict = { "url": url, "date_added": date, "time_added": time, "time_last_checked": date_time, "hash": "", "last_change_time": ""}
     x = headcol.insert_one(head_dict)    
 
 
