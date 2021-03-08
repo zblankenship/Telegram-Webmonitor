@@ -33,7 +33,8 @@ def GenerateHash(data):
 def SleepTime(start_time):
     time_taken = time.process_time() - start
     time_taken = math.ceil(time_taken)
-    time.sleep(300-time_taken)
+    time_to_sleep = 300 - time_taken
+    time.sleep(time_to_sleep)
     return time_taken
 
 def ChangeNotification(link):
@@ -42,7 +43,7 @@ def ChangeNotification(link):
 def updatetime(url):
     time = timefunc()
     date = datefunc()
-    date_time = date + time
+    date_time = date + " " + time
     myquery = { "url": url }
     newvalues = { "$set": { "time_last_checked": date_time } }
     headcol.update_one(myquery, newvalues)
@@ -76,21 +77,24 @@ while True:
         headdoc = headcol.find()
         start = time.process_time()
         for x in headdoc:
-            req = Request(url=x['url'], headers=headers)
+            print('......................................')
+            print(x['url'])
+            req = Request(url=x['url'])
             try:
                 response = urlopen(req).read()
             except urllib.error.HTTPError as e:
                 if e.code in (..., 403, ...):
                     continue
             newHash = GenerateHash(response)
+            print("New Hash: " + newHash)
+            print("Old Hash: " + x['hash'])
             if newHash == x['hash']: 
                 updatetime(x['url'])
             else: 
                 ChangeNotification(x['url'])
                 updatehash(x['url'],newHash)
+            print('......................................')
         time_taken = SleepTime(start)
     except Exception as e: 
-    	print("error") 
-
-
-
+        print("error")
+        continue
