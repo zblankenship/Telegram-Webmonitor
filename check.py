@@ -45,9 +45,7 @@ def ChangeNotification(url, token):
     message = 'The website you are monitoring has changed:{}'.format(url)
     for x in chatids:
         uri = 'https://api.telegram.org/bot{}/sendMessage?chat_id={}&text={}'.format(token, x, message)
-        print(uri)
         requests.post(uri)
-    print(url, 'changed')
 
 def updatetime(url):
     time = timefunc()
@@ -93,8 +91,6 @@ while True:
         headdoc = headcol.find()
         start = time.process_time()
         for x in headdoc:
-            print('......................................')
-            print(x['url'])
             req = Request(url=x['url'])
             try:
                 response = urlopen(req).read()
@@ -102,14 +98,11 @@ while True:
                 if e.code in (..., 403, ...):
                     continue
             newHash = GenerateHash(response)
-            print("New Hash: " + newHash)
-            print("Old Hash: " + x['hash'])
             if newHash == x['hash']: 
                 updatetime(x['url'])
             else: 
                 ChangeNotification(x['url'], token)
                 updatehash(x['url'],newHash)
-            print('......................................')
         time_taken = SleepTime(start)
     except Exception as e: 
         print("error")
