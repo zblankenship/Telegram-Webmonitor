@@ -9,13 +9,16 @@ from datetime import timedelta, datetime
 import datetime
 import urllib
 import math
+import requests
 
 load_dotenv('key.env')
 mongo = os.getenv('mongo')
+token = os.getenv('token')
 myclient = pymongo.MongoClient(mongo)
 mydb = myclient["webmonitor"]
 headcol = mydb["websites"]
 headers = {'User-Agent': 'Mozilla/5.0 (Windows NT 6.1) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/41.0.2228.0 Safari/537.3'}
+chatids = []
 
 def GetWebsite(link):
     url = Request(link, 
@@ -37,8 +40,14 @@ def SleepTime(start_time):
     time.sleep(time_to_sleep)
     return time_taken
 
-def ChangeNotification(link):
-    print(link, 'changed')
+def ChangeNotification(url, token):
+    chatids = get_chat_ids(url)
+    message = 'The website you are monitoring has changed:{}'.format(url)
+    for x in chatids:
+        uri = 'https://api.telegram.org/bot{}/sendMessage?chat_id={}&text={}'.format(token, x, message)
+        print(uri)
+        requests.post(uri)
+    print(url, 'changed')
 
 def updatetime(url):
     time = timefunc()
@@ -59,7 +68,6 @@ def updatehash(url,hash):
             "time_last_checked": date_time} }
     headcol.update_one(myquery, newvalues)
 
-
 def timefunc():
     time = datetime.datetime.now()
     time = time.strftime("%X")
@@ -69,6 +77,14 @@ def datefunc():
     date = datetime.datetime.now()
     date = date.strftime("%x")
     return date
+
+def get_chat_ids(url):
+    chatids = []
+    currentcol = mydb[url]
+    currentdoc = currentcol.find()
+    for x in currentdoc:
+        chatids.append(x['chats_id_to_notify'])
+    return chatids
 
 
 while True:
@@ -91,7 +107,7 @@ while True:
             if newHash == x['hash']: 
                 updatetime(x['url'])
             else: 
-                ChangeNotification(x['url'])
+                ChangeNotification(x['url'], token)
                 updatehash(x['url'],newHash)
             print('......................................')
         time_taken = SleepTime(start)
