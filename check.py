@@ -3,16 +3,17 @@ import time
 import hashlib
 import os
 import pymongo
-from urllib.request import urlopen, Request 
-from dotenv import load_dotenv
-from datetime import timedelta, datetime
+import cv2
+import numpy as np
 import datetime
 import urllib
 import math
 import requests
 from selenium import webdriver
 from selenium.webdriver.firefox.options import Options
-
+from urllib.request import urlopen, Request 
+from dotenv import load_dotenv
+from datetime import timedelta, datetime
 
 load_dotenv('key.env')
 mongo = os.getenv('mongo')
@@ -25,7 +26,6 @@ chatids = []
 options = Options()
 options.binary_location = r"C:\Program Files\Mozilla Firefox\firefox.exe"
 driver = webdriver.Firefox(options=options, executable_path="C:\Selenium\geckodriver.exe")
-i = 0
 
 def GetWebsite(link):
     url = Request(link, 
@@ -50,9 +50,9 @@ def SleepTime(start_time):
 def ChangeNotification(url, token):
     chatids = get_chat_ids(url)
     message = 'The website you are monitoring has changed:{}'.format(url)
-    for x in chatids:
-        uri = 'https://api.telegram.org/bot{}/sendMessage?chat_id={}&text={}'.format(token, x, message)
-        requests.post(uri)
+    #for x in chatids:
+    #    uri = 'https://api.telegram.org/bot{}/sendMessage?chat_id={}&text={}'.format(token, x, message)
+    #    requests.post(uri)
 
 def updatetime(url):
     time = timefunc()
@@ -91,13 +91,36 @@ def get_chat_ids(url):
         chatids.append(x['chats_id_to_notify'])
     return chatids
 
-def get_screenshot(url, i):
-    driver.get(url)
-    time.sleep(1)
-    path = 'C:\\Users\\zackb\\Documents\\Projects\\Telegram-Webmonitor\\screenshots\\{}.png'.format(i)
-    print(path)
-    driver.get_screenshot_as_file(path)
-    driver.quit
+def get_screenshot(url, dbid):
+    path = '.\screenshots\\{}.png'.format(dbid)
+    if not os.path.exists(path):
+        driver.get(url)
+        time.sleep(1)
+        driver.get_screenshot_as_file(path)
+        driver.quit
+    else:
+        path = '.\screenshots\\new_{}.png'.format(dbid)
+        driver.get(url)
+        time.sleep(1)
+        driver.get_screenshot_as_file(path)
+        driver.quit
+
+def check_if_same(current, new):
+    current_image = cv2.imread(current)
+    new_image = cv2.imread(new)
+
+    if current_image.shape == new_image.shape:
+        print("The images have same size and channels")
+        difference = cv2.subtract(current_image, new_image)
+        b, g, r = cv2.split(difference)
+        if cv2.countNonZero(b) == 0 and cv2.countNonZero(g) == 0 and cv2.countNonZero(r) == 0:
+            print("The images are completely Equal")
+            return True
+        else:
+            return False
+    else:
+        return False
+            
 
 
 #while True:
@@ -107,8 +130,8 @@ headdoc = headcol.find()
 start = time.process_time()
 for x in headdoc:
     req = Request(url=x['url'])
-    get_screenshot(x['url'], i)
-    i = i + 1
+    get_screenshot(x['url'], x['_id'])
+    change = check_if_same('.\screenshots\\{}.png'.format(x['_id']), '.\screenshots\\new_{}.png'.format(x['_id']))
     try:
         response = urlopen(req).read()
     except urllib.error.HTTPError as e:
