@@ -13,7 +13,7 @@ from selenium import webdriver
 from selenium.webdriver.firefox.options import Options
 from urllib.request import urlopen, Request 
 from dotenv import load_dotenv
-from datetime import timedelta, datetime
+from datetime import timedelta
 
 load_dotenv('key.env')
 mongo = os.getenv('mongo')
@@ -92,16 +92,17 @@ def get_chat_ids(url):
     return chatids
 
 def get_screenshot(url, dbid):
-    path = '.\screenshots\\{}.png'.format(dbid)
-    if not os.path.exists(path):
+    old_exists = '.\screenshots\\{}.png'.format(dbid)
+    if os.path.exists(old_exists):
+        path = '.\screenshots\\new_{}.png'.format(dbid)
         driver.get(url)
-        time.sleep(1)
+        time.sleep(2)
         driver.get_screenshot_as_file(path)
         driver.quit
     else:
-        path = '.\screenshots\\new_{}.png'.format(dbid)
+        path = '.\screenshots\\{}.png'.format(dbid)
         driver.get(url)
-        time.sleep(1)
+        time.sleep(2)
         driver.get_screenshot_as_file(path)
         driver.quit
 
@@ -113,10 +114,11 @@ def check_if_same(current, new):
         print("The images have same size and channels")
         difference = cv2.subtract(current_image, new_image)
         b, g, r = cv2.split(difference)
-        if cv2.countNonZero(b) == 0 and cv2.countNonZero(g) == 0 and cv2.countNonZero(r) == 0:
+        if cv2.countNonZero(b) <= 10 and cv2.countNonZero(g) <= 10 and cv2.countNonZero(r) <= 10:
             print("The images are completely Equal")
             return True
         else:
+            print("{} {} {}".format(cv2.countNonZero(b),cv2.countNonZero(g),cv2.countNonZero(r)))
             return False
     else:
         return False
@@ -131,7 +133,11 @@ start = time.process_time()
 for x in headdoc:
     req = Request(url=x['url'])
     get_screenshot(x['url'], x['_id'])
-    change = check_if_same('.\screenshots\\{}.png'.format(x['_id']), '.\screenshots\\new_{}.png'.format(x['_id']))
+    if os.path.exists('.\screenshots\\new_{}.png'.format(x['_id'])):
+        print(x['url'])
+        change = check_if_same('.\screenshots\\{}.png'.format(x['_id']), '.\screenshots\\new_{}.png'.format(x['_id']))
+    else:
+        continue
     try:
         response = urlopen(req).read()
     except urllib.error.HTTPError as e:
